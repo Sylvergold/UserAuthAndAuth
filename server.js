@@ -1,12 +1,10 @@
-const express=require("express")
-
+const express = require("express")
 require("dotenv").config()
-const app=express()
+const app = express()
 app.use(express.json())
-
-const router=require("./router/userRouter")
-const multer =require("multer")
-app.use("/api/v1/",router)
+const router = require("./router/userRouter")
+const multer = require("multer")
+app.use("/api/v1/", router)
 app.use((err, req, res, next) => {
     if (err instanceof multer.MulterError) {
     
@@ -17,14 +15,11 @@ app.use((err, req, res, next) => {
 
 next()
 });
-
-const url=process.env.mongodbUrl
-const port=process.env.port
-
-const mongoose=require("mongoose")
-
+const url = process.env.mongodbUrl
+const port = process.env.port
+const mongoose = require("mongoose")
 mongoose.connect(url).then(()=>{
-    console.log("connection to database established")
+    console.log("Connection to database established")
     app.listen(port,()=>{console.log("App is connected on port " + port)})
 }).catch((error)=>{
     console.log("unable to connect because "+error)

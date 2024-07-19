@@ -8,7 +8,7 @@ lastName:String,
 
 passWord:String,
 
-email:{type:String},
+email:String,
  
 phoneNumber:String,
 
@@ -18,7 +18,17 @@ isSuperAdmin:{type:Boolean,default:false},
 
 isVerified:{type:Boolean,default:false},
 
-profilePicture:{pictureUrl:String,pictureId:String}
+profilePicture:{pictureUrl:String,pictureId:String},
+profilePicture: {
+    pictureId: { type: String },
+    pictureUrl: { type: String},
+    formerImages: [
+        {
+            pictureId: { type: String },
+            pictureUrl: { type: String }
+        }
+    ]
+}
 
 },{timestamps:true})
 

@@ -1,6 +1,3 @@
-    
-    
-
 const jwt=require("jsonwebtoken")
 require("dotenv").config()
 const userModel= require("../model/userModel")
@@ -11,16 +8,12 @@ const token=req.headers.authorization && req.headers.authorization.split(" ")[1]
  if(!token){
     return res.status(400).json("Something went wrong")
  }   
-
  await jwt.verify(token,process.env.jwtSecret,(err,user)=>{
     if(err){
         return res.status(400).json(" kindly login to perform this action")
     }
-   
     req.user=user.firstName
-
-
- })
+  })
 
 const checkUser= await userModel.findOne({firstName:req.user})
 
@@ -31,36 +24,24 @@ console.log(checkUser)
       }else{
         next()
       }
-
-
-
-
-
     } catch (error) {
      return  res.status(500).json(error.message) 
     }
 }  
 
-
 //superAdmin
-
 exports.authorizationSuper=async(req,res,next)=>{
     try {
 const token=req.headers.authorization && req.headers.authorization.split(" ")[1] 
  if(!token){
     return res.status(400).json("Something went wrong")
  }   
-
  await jwt.verify(token,process.env.jwtSecret,(err,user)=>{
     if(err){
         return res.status(400).json(" kindly login to perform this action")
     }
-   
     req.user=user.firstName
-
-
- })
-
+  })
 const checkUser= await userModel.findOne({firstName:req.user})
 
 console.log(checkUser)
@@ -70,11 +51,6 @@ console.log(checkUser)
       }else{
         next()
       }
-
-
-
-
-
     } catch (error) {
      return  res.status(500).json(error.message) 
     }

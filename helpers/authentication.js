@@ -8,15 +8,13 @@ const token=req.headers.authorization && req.headers.authorization.split(" ")[1]
     return res.status(400).json("Something went wrong")
  }   
 
- await jwt.verify(token,process.env.jwtSecret,(err,tega)=>{
+ await jwt.verify(token,process.env.jwtSecret,(err,sly)=>{
     if(err){
-        return res.status(400).json(" kindly login to perform this action")
+        return res.status(400).json("Kindly login to perform this action")
     }
-      req.user=tega.firstName
-    
-
- })
- next()
+      req.user = sly.id
+      next()
+    })
 
     } catch (error) {
        res.status(500).json(error.message) 

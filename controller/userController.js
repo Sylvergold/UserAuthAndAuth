@@ -5,68 +5,84 @@ require("dotenv").config()
 const html=require("../helpers/html.js")
 const jwt= require("jsonwebtoken")
 const cloudinary= require("../helpers/cloudinary.js")
-exports.createUser =async (req,res)=>{
+const fs = require("fs")
 
+exports.createUser = async (req, res) => {
     try {
-const{firstName,lastName,email,phoneNumber,passWord}=req.body
-const checkIfAnEmailExists= await userModel.findOne({email:email.toLowerCase()})
+        const { firstName, lastName, email, phoneNumber, passWord } = req.body;
 
-if(checkIfAnEmailExists){
-    return res.status(400).json("user with this email already exists")
-}
-const bcryptpassword=await bcrypt.genSaltSync(10)
+        // Check if email already exists
+        const checkIfAnEmailExists = await userModel.findOne({ email: email.toLowerCase() });
+        if (checkIfAnEmailExists) {
+            return res.status(400).json("User with this email already exists");
+        }
 
-const hashedPassword =await bcrypt.hashSync(passWord,bcryptpassword)
+        // Generate salt and hash password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(passWord, salt);
 
-console.log(req.file)
-const cloudProfile=await cloudinary.uploader.upload(req.file.path,{folder:" users dp"},(err)=>{
-    if(err){
-        return res.status(400).json(err.message)
-    }
-})
+        // Check if the profile picture is uploaded
+        if (!req.file) {
+            return res.status(400).json("Kindly upload your profile picture");
+        }
 
-const data={firstName,
-    lastName,
-    email:email.toLowerCase(),
-    phoneNumber,
-    passWord:hashedPassword,
-    profilePicture:{
-        pictureId:cloudProfile.public_id,
-        pictureUrl:cloudProfile.secure_url
-    }
-}
+        // Upload profile picture to Cloudinary
+        const cloudProfile = await cloudinary.uploader.upload(req.file.path, { folder: "users_dp" });
 
-const createdUser = await userModel.create(data)
+        // Prepare user data
+        const data = {
+            firstName,
+            lastName,
+            email: email.toLowerCase(),
+            phoneNumber,
+            passWord: hashedPassword,
+            profilePicture: {
+                pictureId: cloudProfile.public_id,
+                pictureUrl: cloudProfile.secure_url
+            }
+        };
 
-const userToken = jwt.sign({id:createdUser._id,email:createdUser.email},process.env.jwtSecret,{expiresIn: "3 Minutes"})
-const verifyLink=  `${req.protocol}://${req.get("host")}/api/v1/verify/${createdUser._id}/${userToken}`
-console.log(req.protocol)
-console.log(req.get("host"))
-sendMail({ subject : `Kindly Verify your mail`,
-    email:createdUser.email,
-    html:html(verifyLink,createdUser.firstName)
-    // message:`Welcome ${createdUser.firstName}  ${createdUser.lastName}  kindly click on the button below to verify your account /   ${verifyLink}`
-})
+        // Create the user
+        const createdUser = await userModel.create(data);
 
-res.status(201).json({
-    message:`Welcome ${createdUser.firstName} kindly check your gmail to access the link to verify your email`,
-    data:createdUser
-})
-        
+        // Delete the image from the local filesystem
+        fs.unlink(req.file.path, (err) => {
+            if (err) {
+                return res.status(400).json("Unable to delete user profile image: " + err.message);
+            }
+        });
+
+        // Generate JWT token
+        const userToken = jwt.sign({ id: createdUser._id, email: createdUser.email }, process.env.jwtSecret, { expiresIn: "3 minutes" });
+
+        // Generate verification link
+        const verifyLink = `${req.protocol}://${req.get("host")}/api/v1/verify/${createdUser._id}/${userToken}`;
+
+        // Send verification email
+        sendMail({
+            subject: "Kindly Verify your Email",
+            email: createdUser.email,
+            html: html(verifyLink, createdUser.firstName)
+        });
+
+        // Send response
+        res.status(201).json({
+            message: `Welcome ${createdUser.firstName}, kindly check your email to verify your account.`,
+            data: createdUser
+        });
     } catch (error) {
-      res.status(500).json(error.message)  
+        res.status(500).json(error.message);
     }
-}
+};
+
 
 //create an end point to verify users email
-
-
 exports.verifyEmail=async (req,res)=>{
     try {
 const id=req.params.id
-    const findUser=await userModel.findById(id)
+const findUser=await userModel.findById(id)
 await jwt.verify(req.params.token,process.env.jwtSecret,(err)=>{
-    if(err  ){
+    if(err){
         const link=`${req.protocol}://${req.get("host")}/api/v1/newemail/${findUser._id}`
 
         sendMail({ subject : `Kindly Verify your mail`,
@@ -75,19 +91,18 @@ await jwt.verify(req.params.token,process.env.jwtSecret,(err)=>{
           
         })
  
-    return res.json(`this link has expired ,kindly check your email link`)
+    return res.json(`This link has expired, kindly check your email link`)
       
     }else{
         if(findUser.isVerified == true){
-            return res.status(400).json("your account has already been verified")
+            return res.status(400).json("Your account has already been verified")
         }
     userModel.findByIdAndUpdate(id,{isVerified:true})
     
-        res.status(200).json("you have been verified,kindly go ahead to log in")
+        res.status(200).json("You have been verified,kindly go ahead to log in")
     }
 })
     
-        
     } catch (error) {
         res.status(500).json(error.message)  
       
@@ -105,16 +120,10 @@ exports.newEmail=async(req,res)=>{
             email:user.email,
             html:html(reverifyLink,user.firstName)}
         )
-       
-
-
-
     } catch (error) {
        res.status(500).json(error.message) 
     }
 }
-
-
 exports.logIn= async (req,res)=>{
 try {
 
@@ -130,20 +139,17 @@ try {
         return res.status(400).json("password in correct")
     }
 
-    const user=await jwt.sign({firstName:findWithEmail.firstName,},process.env.jwtSecret,{expiresIn: "2 minutes"})
-
+const user=await jwt.sign({firstName:findWithEmail.firstName,},process.env.jwtSecret,{expiresIn: "2 minutes"})
 
 const{isVerified ,phoneNumber,createdAt,updatedAt,__v,_id,passWord, ...others}=findWithEmail._doc
+  res.status(200).json({message:"login Successful",data: others,token:user})
 
-
-    res.status(200).json({message:"login Successful",data: others,token:user})
 } catch (error) {
     res.status(500).json(error.message)  
 }
 }
 
 //update a user
-
 exports.updateUser = async (req, res)=>{
     try {
         const userId = req.params.id;
@@ -161,13 +167,11 @@ exports.updateUser = async (req, res)=>{
                 data: updatedUser
             })
         
-        
-
-        
-    } catch (error) {
+        } catch (error) {
       return  res.status(500).json(error.message)
     }
 }
+
 exports.makeAdmin =async(req,res)=>{
 try {
   const newAdmin=  await userModel.findByIdAndUpdate(req.params.id,{isAdmin:true})
@@ -179,3 +183,127 @@ try {
 }
 }
 
+exports.makeSuperAdmin= async(req,res)=>{
+    try {
+        const newSuperAdmin = await userModel.findByIdAndUpdate(req.params.id,{isAdmin:true});
+
+        res.status(200).json({
+            message:`${newSuperAdmin.Firstname} is now an SUPER ADMIN.`
+        })
+        
+    } catch (error) {
+        res.status(500).json({
+            message:error.message 
+        })
+        
+    }
+}
+
+
+exports.updatePicture = async (req, res) => {
+    try {
+        // Extract token from headers
+        const userToken = req.headers.authorization.split(" ")[1];
+
+        // Check if file is provided
+        if (!req.file) {
+            return res.status(400).json({ message: "No profile picture selected" });
+        }
+
+        // Verify token
+        jwt.verify(userToken, process.env.jwtSecret, async (error, newUser) => {
+            if (error) {
+                return res.status(400).json({ message: "Could not authenticate" });
+            } else {
+                const userId = newUser.id;
+
+                // Find user to get the current profile picture
+                const user = await userModel.findById(userId);
+                if (!user) {
+                    return res.status(404).json({ message: "User not found" });
+                }
+
+                // Save the current profile picture details
+                const formerImage = {
+                    pictureId: user.profilePicture.pictureId,
+                    pictureUrl: user.profilePicture.pictureUrl
+                };
+
+                // Upload new profile picture to Cloudinary
+                const cloudProfile = await cloudinary.uploader.upload(req.file.path, { folder: "users_dp" },{new:true});
+
+                // Prepare update data
+                const pictureUpdate = {
+                    profilePicture: {
+                        pictureId: cloudProfile.public_id,
+                        pictureUrl: cloudProfile.secure_url,
+                        formerImages: [...user.profilePicture.formerImages, formerImage] // Save old picture details
+                    }
+                };
+
+                // Update user profile picture
+                const updatedUser = await userModel.findByIdAndUpdate(userId, pictureUpdate, { new: true });
+
+                //delete the picture from media folder
+                fileSystem.unlink(req.file.path,(error)=>{
+                    if(error){
+                        return res.status(400).json({
+                            message:"unable to delete users profile picture",error
+                        })            
+                    }
+                });
+
+                // Return success response
+                return res.status(200).json({
+                    message: "User image successfully changed",
+                    data: updatedUser.profilePicture
+                });
+            }
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            message: error.message
+        });
+    }
+};
+
+// exports.updatePicture = async(req, res)=>{
+//     try {
+//         const userToken = req.headers.authorization.split(" ")[1]
+//         if(!req.file){
+//             return res.status(400).json({message:"No profile picture selected"})
+//         }
+//         // verify token
+//         await jwt.verify(userToken, process.env.jwtSecret, async(err, newUser)=>{
+//             if(!err){
+//                 return res.status(400).json("Could not authenticate")
+//             } else {
+//                 req.user = newUser.id
+
+//             const cloudImage = await cloudinary.uploader.upload(req.file.path, {folder: "user dp"}, (err, data)=>{
+//                 if(err){
+//                     console.log(err)
+//                 }
+//                 // Cloudinary.upload.destroy()
+//                 return data
+//             })
+//             const userId = newUser.id
+//             console.log(userId)
+
+//             const pictureUpdate = {profilePicture:{
+//                 pictureId:cloudImage.public_id,
+//                 pictureUrl:clooudImage.secure_url
+//             }}
+//             const uoser = await userModel.findById(userId)
+//             const formerImageId = user.profilePicture.pictureId
+//             await cloudinary.uploader.destroy(formerImageId)
+
+//             const checkUser = await userModel.findByIdAndUpdate(userId, pictureUpdate, {new:true})
+//             return res.status(200).json({message: "User image successfully updated"})
+//             }
+//         })
+//     } catch (error) {
+//         res.status(500).json(error.message)
+//     }
+// }
