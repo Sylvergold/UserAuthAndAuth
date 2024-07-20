@@ -1,7 +1,5 @@
 const router = require("express").Router()
-
 const {createUser, verifyEmail, newEmail, logIn, updateUser, makeAdmin, updatePicture} = require("../controller/userController")
-
 const {authenticator} =  require("../helpers/authentication")
 const {authorization, authorizationSuper}=require("../helpers/authorization")
 const{uploader} = require("../helpers/multer")
@@ -19,6 +17,7 @@ router.post("/login", logIn)
 
 router.put("/changedp", authenticator, uploader.single("profilePicture"), updatePicture)
 router.get("/", authenticator, (req,res)=>{ res.status(200).json(`Welcome to my api ${req.user}`)
+
 })
 
 
