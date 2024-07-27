@@ -74,40 +74,73 @@ exports.createUser = async (req, res) => {
         res.status(500).json(error.message);
     }
 };
-
-
-//create an end point to verify users email
-exports.verifyEmail=async (req,res)=>{
+// //create an end point to verify users email
+exports.verifyEmail = async (req, res) => {
     try {
-const id=req.params.id
-const findUser=await userModel.findById(id)
-await jwt.verify(req.params.token,process.env.jwtSecret,(err)=>{
-    if(err){
-        const link=`${req.protocol}://${req.get("host")}/api/v1/newemail/${findUser._id}`
+        const id = req.params.id;
+        const token = req.params.token;
 
-        sendMail({ subject : `Kindly Verify your mail`,
-            email:findUser.email,
-            html:html(link,findUser.firstName)
-          
-        })
- 
-    return res.json(`This link has expired, kindly check your email link`)
-      
-    }else{
-        if(findUser.isVerified == true){
-            return res.status(400).json("Your account has already been verified")
-        }
-    userModel.findByIdAndUpdate(id,{isVerified:true})
-    
-        res.status(200).json("You have been verified,kindly go ahead to log in")
-    }
-})
-    
+        const findUser = await userModel.findById(id);
+        await jwt.verify(token, process.env.jwtSecret, async (err) => {
+            if (err) {
+                const link = `${req.protocol}://${req.get("host")}/api/v1/newemail/${findUser._id}`;
+
+                await sendMail({
+                    subject: `Kindly Verify your email`,
+                    email: findUser.email,
+                    html: html(link, findUser.firstName)
+                });
+
+                return res.json(`This link has expired, kindly check your email link`);
+            } else {
+                if (findUser.isVerified) {
+                    return res.status(400).json("Your account has already been verified");
+                }
+                await userModel.findByIdAndUpdate(id, { isVerified: true });
+
+                // Redirect URL after successful verification
+                const redirectUrl = "https://festac-class-r5np.onrender.com";
+                res.redirect(redirectUrl);
+            }
+        });
     } catch (error) {
-        res.status(500).json(error.message)  
-      
+        res.status(500).json(error.message);
     }
-}
+};
+
+
+// //create an end point to verify users email
+// exports.verifyEmail=async (req,res)=>{
+//     try {
+// const id=req.params.id
+// const findUser=await userModel.findById(id)
+// await jwt.verify(req.params.token,process.env.jwtSecret,(err)=>{
+//     if(err){
+//         const link=`${req.protocol}://${req.get("host")}/api/v1/newemail/${findUser._id}`
+
+//         sendMail({ subject : `Kindly Verify your mail`,
+//             email:findUser.email,
+//             html:html(link,findUser.firstName)
+          
+//         })
+ 
+//     return res.json(`This link has expired, kindly check your email link`)
+      
+//     }else{
+//         if(findUser.isVerified == true){
+//             return res.status(400).json("Your account has already been verified")
+//         }
+//     userModel.findByIdAndUpdate(id,{isVerified:true})
+    
+//         res.status(200).json("You have been verified,kindly go ahead to log in")
+//     }
+// })
+    
+//     } catch (error) {
+//         res.status(500).json(error.message)  
+      
+//     }
+// }
 
 exports.newEmail=async(req,res)=>{
     try {
@@ -267,43 +300,3 @@ exports.updatePicture = async (req, res) => {
         });
     }
 };
-
-// exports.updatePicture = async(req, res)=>{
-//     try {
-//         const userToken = req.headers.authorization.split(" ")[1]
-//         if(!req.file){
-//             return res.status(400).json({message:"No profile picture selected"})
-//         }
-//         // verify token
-//         await jwt.verify(userToken, process.env.jwtSecret, async(err, newUser)=>{
-//             if(!err){
-//                 return res.status(400).json("Could not authenticate")
-//             } else {
-//                 req.user = newUser.id
-
-//             const cloudImage = await cloudinary.uploader.upload(req.file.path, {folder: "user dp"}, (err, data)=>{
-//                 if(err){
-//                     console.log(err)
-//                 }
-//                 // Cloudinary.upload.destroy()
-//                 return data
-//             })
-//             const userId = newUser.id
-//             console.log(userId)
-
-//             const pictureUpdate = {profilePicture:{
-//                 pictureId:cloudImage.public_id,
-//                 pictureUrl:clooudImage.secure_url
-//             }}
-//             const uoser = await userModel.findById(userId)
-//             const formerImageId = user.profilePicture.pictureId
-//             await cloudinary.uploader.destroy(formerImageId)
-
-//             const checkUser = await userModel.findByIdAndUpdate(userId, pictureUpdate, {new:true})
-//             return res.status(200).json({message: "User image successfully updated"})
-//             }
-//         })
-//     } catch (error) {
-//         res.status(500).json(error.message)
-//     }
-// }

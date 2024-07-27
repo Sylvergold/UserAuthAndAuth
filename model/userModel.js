@@ -1,6 +1,6 @@
 const mongoose=require("mongoose")
 
-const userSchema=new mongoose.Schema({
+const userSchema = new mongoose.Schema({
 
 firstName:String,
 
@@ -32,6 +32,13 @@ profilePicture: {
 
 },{timestamps:true})
 
-const userModel = mongoose.model("user auth",userSchema)
+userSchema.set('toJSON', {
+  transform: (doc, ret) => {
+    delete ret.__v;
+    return ret;
+  }
+});
+
+const userModel = mongoose.model("userauth", userSchema)
 
 module.exports= userModel
